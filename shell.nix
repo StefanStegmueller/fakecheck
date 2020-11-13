@@ -13,7 +13,7 @@ let
                             scikitlearn
                             gensim 
                             nltk
-                            pandas
+                            spacy
                           ];
   };
 
