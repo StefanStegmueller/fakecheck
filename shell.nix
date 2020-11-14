@@ -10,10 +10,12 @@ let
     name = "python";
     packages = p: with p; [ numpy
                             matplotlib
-                            scikitlearn
                             gensim 
                             nltk
                             spacy
+                            tensorflow
+                            tensorflow-tensorboard
+                            Keras
                           ];
   };
 
