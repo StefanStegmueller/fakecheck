@@ -16,6 +16,7 @@ let
                             tensorflow
                             tensorflow-tensorboard
                             Keras
+                            scikitlearn
                           ];
   };
 
