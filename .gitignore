@@ -1,5 +1,9 @@
 # Data files
 data/10kGNAD.csv
+data/*.tfrecords
+
+# Log files
+notebooks/logs
 
 # Models
 models/

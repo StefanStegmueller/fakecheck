@@ -13,7 +13,7 @@ let
                             gensim 
                             nltk
                             spacy
-                            tensorflow
+                            tensorflow-build_2
                             tensorflow-tensorboard
                             Keras
                             scikitlearn
