@@ -17,6 +17,8 @@ let
                             tensorflow-tensorboard
                             Keras
                             scikitlearn
+                            pydot
+                            graphviz
                           ];
   };
 
