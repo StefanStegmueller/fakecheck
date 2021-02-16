@@ -7,15 +7,14 @@ let
   }) {};
 
   iPython = jupyter.kernels.iPythonWith {
-    name = "python";
+    name = "ml";
     packages = p: with p; [ numpy
                             matplotlib
                             gensim 
                             nltk
                             spacy
                             tensorflow-build_2
-                            tensorflow-tensorboard
-                            Keras
+                            tensorflow-tensorboard_2
                             scikitlearn
                             pydot
                             graphviz
