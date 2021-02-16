@@ -3,7 +3,5 @@ matplotlib
 gensim 
 nltk
 spacy
-tensorflow==2.4.1
-tensorboard==2.4.1
 pydot
 graphviz
