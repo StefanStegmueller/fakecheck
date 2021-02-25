@@ -1,6 +1,6 @@
 # use to build image: docker build --rm -t jupyter/fakecheck .
 
-FROM jupyter/tensorflow-notebook:016833b15ceb
+FROM jupyter/base-notebook
 
 # Install from requirements.txt file
 COPY --chown=${NB_UID}:${NB_GID} requirements.txt /tmp/
