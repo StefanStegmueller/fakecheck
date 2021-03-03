@@ -17,22 +17,30 @@ def __ranked_indices(ps):
     return [i for i, v in sorted(enumerate(ps), key=lambda tup: tup[1], reverse=True)]
 
 def precision_at_k(data, k):
-    """Returns a float
+    """Returns a float.
     
     Input format for data is list of tuples (article_id, prediction, label).
+
+    The P@k for a given prediction scores for an article is the percentage
+    fake sentences among the top-k. 
+    This function returns the mean P@k of the given articles.
     """
     
     precisions_at_k = []
     num_articles = __count_articles(data)
     
     def compute_precision_at_k(ps, ts):
-        ranked_indices = __ranked_indices(ps)[:k]
+        k_local = k
+        if k_local > len(ps):
+            k_local = len(ps)
+        
+        ranked_indices = __ranked_indices(ps)[:k_local]
         
         num_correct = 0
         for i, line_number in enumerate(ranked_indices):
             if ts[line_number] == 1:
                 num_correct += 1
-        precision = (num_correct / k)
+        precision = (num_correct / k_local)
         precisions_at_k.append(precision)
     
     __map_articles(data, compute_precision_at_k)
@@ -41,11 +49,16 @@ def precision_at_k(data, k):
     
 
 def mean_average_precision(data):
-    """Returns a float
+    """Returns a float.
     
     Input format for data is list of tuples (article_id, prediction, label).
 
-    MAP metric is based on the official CLEF2019 implementation: 
+    Average Precision (AP) is the average of the k P@R_i of an article,
+    where R_i is the position of a fake sentence in the sorted predicted scores.
+    Here k is the number of fake sentences of an article.
+    This functions returns the mean AP of the given articles.
+    
+    This MAP metric implementation is based on the official CLEF2019 implementation: 
     https://github.com/apepa/clef2019-factchecking-task1/blob/7d463336897ad1f870cb6a481953b94550c788a7/scorer/main.py#L52
     """
     
