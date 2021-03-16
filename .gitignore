@@ -1,6 +1,8 @@
 # Data files
 data/10kGNAD.csv
 data/*.tfrecords
+data/GermanFakeNC_FORMATED_TRAIN.json
+data/GermanFakeNC_FORMATED_TEST.json
 
 # Log files
 notebooks/logs
