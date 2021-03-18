@@ -6,16 +6,16 @@ import datetime
 import tensorflow as tf
 from tensorflow.data import Dataset
 
-
-def read_json_data(path):
-    with open(path) as json_file:
-        return json.load(json_file)
-    
     
 def write_json_data(data, path):
     with open(path, 'w') as fout:
         json.dump(data, fout)
         
+        
+def read_json_data(path):
+    with open(path) as json_file:
+        return json.load(json_file)
+            
         
 def write_tfrecords(sdata, chunk_size, data_path, file_suffix, dkeys, feature_func):
     chunk_lst = [chunks([d[dkey] for d in sdata], chunk_size) for dkey in dkeys]
@@ -31,6 +31,12 @@ def write_tfrecords(sdata, chunk_size, data_path, file_suffix, dkeys, feature_fu
             serialized = example.SerializeToString()
             writer.write(serialized)
         writer.close()
+
+        
+def read_tfrecords(data_path, suffix, parser):
+    data_files = tf.data.Dataset.list_files(data_path + '_' + suffix + '_*.tfrecords')
+    data_raw = tf.data.TFRecordDataset(data_files)
+    return data_raw.map(parser)
 
         
 def batch_predict(tf_ds, batch_size, prediction_func):

@@ -172,3 +172,16 @@ def contrastive_sampling(data, w2v_model, k):
     flatten = lambda lst: [j for sub in lst for j in sub]
     return flatten(data)
 
+
+def process_bert(data, max_sent_len, bert_tokenizer):
+    sentences = [d['org'] for d in data]
+    encodings =  bert_tokenizer(sentences, max_length=max_sent_len, truncation=True, padding=True)
+    dl2ld = lambda dictionary: [dict(zip(dictionary,t)) for t in zip(*dictionary.values())] 
+    encodings = dl2ld(encodings) 
+
+    for i, encoding in enumerate(encodings):
+        data[i]['input_ids'] = encoding['input_ids']
+        data[i]['token_type_ids'] = encoding['token_type_ids']
+        data[i]['attention_mask'] = encoding['attention_mask']        
+    
+    return data
