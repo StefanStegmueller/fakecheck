@@ -33,9 +33,9 @@ def write_tfrecords(sdata, chunk_size, data_path, file_suffix, dkeys, feature_fu
         writer.close()
 
         
-def read_tfrecords(data_path, suffix, parser):
+def read_tfrecords(data_path, suffix, parser, buffer_size = None):
     data_files = tf.data.Dataset.list_files(data_path + '_' + suffix + '_*.tfrecords')
-    data_raw = tf.data.TFRecordDataset(data_files)
+    data_raw = tf.data.TFRecordDataset(data_files, buffer_size=buffer_size)
     return data_raw.map(parser)
 
         
