@@ -3,13 +3,8 @@
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
-def format_germanfc(raw_data, spacy_model):
-    """Returns dict with the following keys and the max. length of a sentence:
-    'article_id', 'org', 'lbl', 'tokenized', 'tokenized_lower'.
-    
-    A sentence with 'lbl'=1.0 is considered a fake statement.
-    """
-    
+
+def __process_article(article_id, article, statement_desc, spacy_model, max_sent_len):    
     def count_matches(false_statement, sentence):
         count = 0
         sent_copy = sentence[:]
@@ -18,7 +13,7 @@ def format_germanfc(raw_data, spacy_model):
                 count += 1
                 sent_copy.remove(w)
         return count
-
+    
     def process_sentences(sentences, article_id,  max_sent_len):
         processed = []
         for s in sentences:
@@ -41,33 +36,78 @@ def format_germanfc(raw_data, spacy_model):
                 'tokenized_lower': [t.text.lower() for t in s]
             })
         return processed, max_sent_len
-
-    data = []
-    max_sent_len = 0
-    for article_id, article in enumerate(raw_data):
-        title = spacy_model(article['Title']).sents
-        teaser = spacy_model(article['Teaser']).sents
-        text = spacy_model(article['Text']).sents
-
-        p_title, max_sent_len = process_sentences(title, article_id, max_sent_len)
+    
+    article_data = []
+    
+    title = spacy_model(article['Title']).sents
+    p_title, max_sent_len = process_sentences(title, article_id, max_sent_len)
+    article_data = article_data + p_title
+    
+    if 'Teaser' in article:
+        teaser = spacy_model(article['Teaser']).sents        
         p_teaser, max_sent_len = process_sentences(teaser, article_id, max_sent_len)
-        p_text, max_sent_len = process_sentences(text, article_id, max_sent_len)
+        article_data = article_data + p_teaser
+        
+    text = spacy_model(article['Text']).sents
+    p_text, max_sent_len = process_sentences(text, article_id, max_sent_len)
+    article_data = article_data + p_text
 
-        article_data = p_title + p_teaser + p_text
+    # Label sentences
+    statements = [] 
+    
+    def add_statement_safe(ix_statement):
+        full_statement_desc = statement_desc + '_Statement_' + ix_statement 
+        if full_statement_desc in article:
+            statements.append((int(ix_statement), article[full_statement_desc]))
+    
+    add_statement_safe('1')
+    add_statement_safe('2')
+    add_statement_safe('3')
+     
+    for i, s in statements:
+        if s != '':
+            s_tokens = [t.text.lower() for t in spacy_model(s)]
+            matches = [count_matches(s_tokens, t) for t in 
+                       [d['tokenized_lower'] for d in article_data]]
+            max_match = max(matches)
+            max_indexes = [i for i, j in enumerate(matches) if j == max_match]
 
-        # Label sentences
-        false_statements = [article['False_Statement_1'], article['False_Statement_2'], article['False_Statement_3']]     
-        for fs in false_statements:
-            if fs != '':
-                fs_tokens = [t.text.lower() for t in spacy_model(fs)]
-                matches = [count_matches(fs_tokens, t) for t in [d['tokenized_lower'] for d in article_data]]
-                m = max(matches)
-                max_indexes = [i for i, j in enumerate(matches) if j == m]
+            for mi in max_indexes:
+                article_data[mi]['lbl'] = 1.0
+                article_data[mi]['statement_id'] = i
+    
+    return article_data, max_sent_len
 
-                for mi in max_indexes:
-                    article_data[mi]['lbl'] = 1.0
+
+def format_germanfc(raw_data, spacy_model, max_sent_len):
+    """Returns dict with the following keys and the max. length of sentences:
+    'article_id', 'org', 'lbl', 'tokenized', 'tokenized_lower'.
+    
+    A sentence with 'lbl'=1.0 is considered a fake statement.
+    """
+    data = []
+    for article_id, article in enumerate(raw_data):        
+        article_data, max_sent_len = __process_article(article_id, article, 'False', spacy_model, max_sent_len)
 
         data = data + article_data
+    return data, max_sent_len
+
+
+def format_germantrc(raw_data, spacy_model, max_sent_len):
+    """Returns dict with the following keys and the max. length of sentences:
+    'article_id', 'org', 'lbl', 'tokenized', 'tokenized_lower'.
+    
+    A sentence with 'lbl'=1.0 is considered a true statement.
+    """
+    
+    data = []
+    for id_raw in raw_data.keys():
+        aid = int(id_raw.replace("ID = ", ""))
+        true_news = raw_data[id_raw][1]
+    
+        for tn in true_news:
+            article_data, max_sent_len = __process_article(aid, tn, 'True', spacy_model, max_sent_len)
+            data = data + (article_data)
     return data, max_sent_len
 
 
@@ -119,7 +159,7 @@ def process_hansen(data, max_sent_len, w2v_model, spacy_model):
         
     return data
 
-def contrastive_sampling(data, w2v_model, k):
+def contrastive_sampling(data, w2v_model, k, true_data=None, assign_bert=False):
     def compute_sentence_embeddings(data):
         word_vector_dim = w2v_model.wv.vector_size
         for d in data:
@@ -141,33 +181,61 @@ def contrastive_sampling(data, w2v_model, k):
                 topk_stack.append((i, sim))    
                 topk_stack.sort(reverse=True)
         return [index for (index, sim) in topk_stack]
+    
+    def retrieve_processed_data(data, index):
+        if assign_bert:
+            return (data[index]['input_ids'],
+                    data[index]['token_type_ids'],
+                    data[index]['attention_mask'])
+        else:
+            return data[index]['processed']
+        
+    def assign_candidate(d, ptc):
+        d_copy = dict(d)
+        if assign_bert:
+            inp_ix_c, token_ids_c, att_mask_c = ptc
+            
+            # rename field dict fields
+            d_copy['input_ids1'] = d_copy.pop('input_ids')
+            d_copy['token_type_ids1'] = d_copy.pop('token_type_ids')
+            d_copy['attention_mask1'] = d_copy.pop('attention_mask')
 
-    # only use train data
-    # no negative sampling for test data neccesary
+            d_copy['input_ids2'] = inp_ix_c
+            d_copy['token_type_ids2'] = token_ids_c
+            d_copy['attention_mask2'] = att_mask_c
+        else:
+            d_copy['cs'] = ptc
+        return d_copy
+
+        
     sentence_embeddings = list(compute_sentence_embeddings(data))
-
     similarities = cosine_similarity(sentence_embeddings, sentence_embeddings)
 
     processed_topk_candidates = []
     ixs_topk_candidates = []
     for i, row_sims in enumerate(similarities):
         top_k_ixs = retrieve_topk_ixs(i, data, k, row_sims)
-
-        top_k_processed = []    
+        top_k_processed = []
+        
+        # add true statements as contrastive samples
+        if data[i]['lbl' ] == 1.0 and true_data:
+            aid = data[i]['article_id']
+            sid = data[i]['statement_id']
+            true_statement_ids = [i for i, d in enumerate(true_data)
+                               if d['article_id'] == aid 
+                               and d['lbl'] == 1.0
+                               and d['statement_id'] == sid]
+            for tsi in true_statement_ids:
+                if top_k_ixs:
+                    top_k_ixs.pop()
+                top_k_processed.append(retrieve_processed_data(true_data, tsi))
+            
         for top_k_ix in top_k_ixs:
-            top_k_processed.append(data[top_k_ix]['processed']) 
+            top_k_processed.append(retrieve_processed_data(data, top_k_ix))
         processed_topk_candidates.append(top_k_processed)
-        ixs_topk_candidates.append(top_k_ixs)
 
-
-    def assign_candidate(d, ptc, ix):
-        d_copy = dict(d)
-        d_copy['cs'] = ptc
-        d_copy['cs_ix'] = ix
-        return d_copy
-
-    candidates_zipped = zip(data, processed_topk_candidates, ixs_topk_candidates)
-    data = [[assign_candidate(d, ptc, ix) for ptc, ix in zip(ptcs, ixs)] for d, ptcs, ixs in candidates_zipped]
+    candidates_zipped = zip(data, processed_topk_candidates)
+    data = [[assign_candidate(d, ptc) for ptc in ptcs] for d, ptcs in candidates_zipped]
 
     flatten = lambda lst: [j for sub in lst for j in sub]
     return flatten(data)
