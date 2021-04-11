@@ -1,3 +1,11 @@
 numpy
 matplotlib
+gensim 
+nltk
 spacy
+sklearn
+pydot
+graphviz
+transformers
+tensorflow
+tensorboard

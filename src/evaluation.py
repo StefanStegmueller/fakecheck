@@ -21,7 +21,7 @@ def precision_at_k(data, k):
     
     Input format for data is list of tuples (article_id, prediction, label).
 
-    The P@k for a given prediction scores for an article is the percentage
+    The P@k for given prediction scores for an article is the percentage
     fake sentences among the top-k. 
     This function returns the mean P@k of the given articles.
     """

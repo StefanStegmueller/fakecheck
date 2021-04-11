@@ -1,7 +1,14 @@
-FROM python:3.8
+# use to build image: docker build --rm -t jupyter/fakecheck .
 
-#Install requirements
-COPY ./requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+FROM jupyter/base-notebook
 
-WORKDIR /src
+# Install from requirements.txt file
+COPY --chown=${NB_UID}:${NB_GID} requirements.txt /tmp/
+RUN pip install --requirement /tmp/requirements.txt && \
+    fix-permissions $CONDA_DIR && \
+    fix-permissions /home/$NB_USER
+
+RUN python3 -m spacy download de_core_news_sm
+
+
+
